@@ -23,7 +23,7 @@ jobs:
         id: check
         run: |
           current=$(grep 'code.gitea.io/tea ' go.mod | awk '{print $2}')
-          latest=$(go list -m -versions code.gitea.io/tea | tr ' ' '\n' | grep -v '\-rc' | tail -1)
+          latest=$(go list -m -f '{{.Version}}' code.gitea.io/tea@latest)
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
           if [ "$current" != "$latest" ]; then
@@ -50,3 +50,18 @@ jobs:
           git add go.mod go.sum
           git commit -m "deps: bump tea to ${{ steps.check.outputs.latest }}"
           git push
+
+      - name: Tag new release
+        if: steps.check.outputs.update == 'true'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --sort=-v:refname | grep '^v' | head -1)
+          major=$(echo "$latest_tag" | cut -d. -f1 | tr -d 'v')
+          minor=$(echo "$latest_tag" | cut -d. -f2)
+          patch=$(echo "$latest_tag" | cut -d. -f3)
+          new_tag="v${major}.${minor}.$((patch + 1))"
+          git tag "$new_tag"
+          git remote set-url origin "https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git"
+          git push origin "$new_tag"
