@@ -15,7 +15,7 @@ import (
 	"golang.org/x/term"
 )
 
-var Version = "0.1.0-dev"
+var Version = "0.1.1"
 
 func main() {
 	app := cmd.App()

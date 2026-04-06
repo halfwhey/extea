@@ -4,18 +4,6 @@ A drop-in replacement for the Gitea CLI (`tea`) that adds project board (kanban)
 
 ## Install
 
-### Prebuilt binary (recommended)
-
-```bash
-gh release download v0.1.0 --repo halfwhey/extea --pattern '*linux*amd64*'
-tar xzf extea_0.1.0_linux_amd64.tar.gz
-mv extea ~/.local/bin/
-```
-
-Available platforms: `linux`, `darwin` (macOS), `windows`. Architectures: `amd64`, `arm64`.
-
-See all assets at [Releases](https://github.com/halfwhey/extea/releases).
-
 ### From source
 
 ```bash
@@ -29,6 +17,19 @@ git clone https://github.com/halfwhey/extea.git
 cd extea
 CGO_ENABLED=0 go build -o extea .
 ```
+
+### Prebuilt binary 
+
+```bash
+gh release download v0.1.1 --repo halfwhey/extea --pattern '*linux*amd64*'
+tar xzf extea_0.1.1_linux_amd64.tar.gz
+mv extea ~/.local/bin/
+```
+
+Available platforms: `linux`, `darwin` (macOS), `windows`. Architectures: `amd64`, `arm64`.
+
+See all assets at [Releases](https://github.com/halfwhey/extea/releases).
+
 
 ## Authentication
 

@@ -17,11 +17,16 @@ test: ## Run tests
 	go test ./...
 
 .PHONY: release
-release: _require_new_version ## Commit VERSION, tag, push, run goreleaser (NEW_VERSION=vX.Y.Z)
-	printf '%s\n' "$(NEW_VERSION)" > VERSION
-	git add VERSION
+release: _require_new_version ## Bump VERSION + README + main.go, commit, tag, push (CI runs goreleaser) (NEW_VERSION=vX.Y.Z)
+	@OLD_VERSION=$$(cat VERSION 2>/dev/null | tr -d '[:space:]'); \
+	OLD_NUM=$${OLD_VERSION#v}; \
+	NEW_NUM=$(NEW_VERSION:v%=%); \
+	printf '%s\n' "$(NEW_VERSION)" > VERSION; \
+	sed -i "s|gh release download $$OLD_VERSION |gh release download $(NEW_VERSION) |g" README.md; \
+	sed -i "s|extea_$${OLD_NUM}_|extea_$${NEW_NUM}_|g" README.md; \
+	sed -i "s|^var Version = .*|var Version = \"$${NEW_NUM}\"|" main.go
+	git add VERSION README.md main.go
 	git commit -m "$(NEW_VERSION)"
 	git tag "$(NEW_VERSION)"
 	git push origin master
 	git push origin "$(NEW_VERSION)"
-	goreleaser release --clean
