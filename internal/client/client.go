@@ -15,23 +15,27 @@ type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
 	CSRFToken  string
+	Token      string
 }
 
 // New creates an authenticated client by performing a fresh login.
 // Gitea rotates session secrets on each request, so we login fresh
 // each invocation rather than persisting session cookies.
-func New(baseURL, username, password string) (*Client, error) {
+// token is optional: when set, authenticated REST API calls (e.g. the
+// issue-ID lookup) use it via an Authorization header. Board HTML/CSRF
+// flows continue to use the session cookies from the login.
+func New(baseURL, username, password, token string) (*Client, error) {
 	if baseURL == "" {
 		return nil, fmt.Errorf("no Gitea URL; configure tea or set GITEA_URL")
 	}
 	if username == "" || password == "" {
 		return nil, fmt.Errorf("missing credentials; set GITEA_USERNAME and GITEA_PASSWORD")
 	}
-	return Login(baseURL, username, password)
+	return Login(baseURL, username, password, token)
 }
 
 // Login authenticates against Gitea and returns a ready-to-use client.
-func Login(baseURL, username, password string) (*Client, error) {
+func Login(baseURL, username, password, token string) (*Client, error) {
 	jar, _ := cookiejar.New(nil)
 	httpClient := &http.Client{Jar: jar}
 
@@ -87,6 +91,7 @@ func Login(baseURL, username, password string) (*Client, error) {
 		BaseURL:    baseURL,
 		HTTPClient: httpClient,
 		CSRFToken:  csrfToken,
+		Token:      token,
 	}, nil
 }
 
@@ -166,14 +171,26 @@ func (c *Client) Delete(path string) (*http.Response, error) {
 }
 
 // GetIssueInternalID fetches the internal database ID for an issue number via the API.
+// Uses the API token (when available) because Gitea's REST API does not accept
+// session cookies as auth on private repos — it returns 404.
 func (c *Client) GetIssueInternalID(owner, repo string, issueNumber int) (int64, error) {
-	resp, err := c.Get(fmt.Sprintf("/api/v1/repos/%s/%s/issues/%d", owner, repo, issueNumber))
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/repos/%s/%s/issues/%d", c.BaseURL, owner, repo, issueNumber), nil)
+	if err != nil {
+		return 0, err
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "token "+c.Token)
+	}
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		if c.Token == "" && resp.StatusCode == 404 {
+			return 0, fmt.Errorf("failed to get issue #%d: HTTP 404 (private repo? set GITEA_TOKEN or add a token via 'tea login add')", issueNumber)
+		}
 		return 0, fmt.Errorf("failed to get issue #%d: HTTP %d", issueNumber, resp.StatusCode)
 	}
 

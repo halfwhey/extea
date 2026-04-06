@@ -22,7 +22,9 @@ func getClient(cmd *cli.Command) (*client.Client, error) {
 		return nil, err
 	}
 
-	return client.New(login.URL, login.User, password)
+	token := config.Token(login.Token)
+
+	return client.New(login.URL, login.User, password, token)
 }
 
 // getRepoPath returns /{owner}/{repo} from --repo flag or git remote.

@@ -13,6 +13,7 @@ type Login struct {
 	URL      string `json:"url"`
 	User     string `json:"user"`
 	Password string `json:"-"`
+	Token    string `json:"-"`
 }
 
 type teaConfig struct {
@@ -25,6 +26,7 @@ type teaLogin struct {
 	User     string `yaml:"user"`
 	Default  bool   `yaml:"default"`
 	Password string `yaml:"password,omitempty"`
+	Token    string `yaml:"token,omitempty"`
 }
 
 // LoadTeaLogins reads logins from the tea CLI config file.
@@ -45,7 +47,7 @@ func LoadTeaLogins() ([]Login, error) {
 
 	logins := make([]Login, len(cfg.Logins))
 	for i, tl := range cfg.Logins {
-		logins[i] = Login{Name: tl.Name, URL: tl.URL, User: tl.User, Password: tl.Password}
+		logins[i] = Login{Name: tl.Name, URL: tl.URL, User: tl.User, Password: tl.Password, Token: tl.Token}
 	}
 	return logins, nil
 }
@@ -113,7 +115,7 @@ func resolveFromTea(path, nameOverride, urlOverride string) (*Login, error) {
 		}
 	}
 
-	result := &Login{Name: login.Name, URL: login.URL, User: login.User, Password: login.Password}
+	result := &Login{Name: login.Name, URL: login.URL, User: login.User, Password: login.Password, Token: login.Token}
 
 	if u := os.Getenv("GITEA_USERNAME"); u != "" {
 		result.User = u
@@ -149,6 +151,16 @@ func Password(configPassword string) (string, error) {
 		return configPassword, nil
 	}
 	return "", fmt.Errorf("no password configured; set GITEA_PASSWORD or run 'extea login add' with board access enabled")
+}
+
+// Token returns the API token to use for authenticated REST calls.
+// Priority: GITEA_TOKEN env var → config token → empty string (not an error).
+// Callers decide whether an empty token is fatal for their use case.
+func Token(configToken string) string {
+	if t := os.Getenv("GITEA_TOKEN"); t != "" {
+		return t
+	}
+	return configToken
 }
 
 // SetLoginPassword adds or updates the password field for a login in tea's config.

@@ -22,3 +22,5 @@ Drop-in replacement for `tea` (Gitea CLI) that adds project board (kanban) manag
 
 - Build: `CGO_ENABLED=0 go build -o extea .`
 - Test: `GITEA_PASSWORD='...' ./extea projects -r claude/extea-test`
+
+Important: When you are testing this project, use your own "claude" workspace in gitea, to avoid polluting any organization you a part of.
