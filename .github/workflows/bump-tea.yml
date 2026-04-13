@@ -23,7 +23,7 @@ jobs:
         id: check
         run: |
           current=$(grep 'code.gitea.io/tea ' go.mod | awk '{print $2}')
-          latest=$(go list -m -f '{{.Version}}' code.gitea.io/tea@latest)
+          latest=$(go list -m -versions code.gitea.io/tea | tr ' ' '\n' | grep -v '^v1\.3\.3$' | sort -V | tail -1)
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
           if [ "$current" != "$latest" ]; then
