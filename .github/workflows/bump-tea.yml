@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -61,3 +63,11 @@ jobs:
           new_tag="v${major}.${minor}.$((patch + 1))"
           git tag "$new_tag"
           git push origin "$new_tag"
+
+      - name: Run goreleaser
+        if: steps.check.outputs.update == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
