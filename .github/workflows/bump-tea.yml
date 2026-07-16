@@ -12,19 +12,41 @@ jobs:
   bump-tea:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
 
       - name: Check for tea update
         id: check
         run: |
-          current=$(grep 'code.gitea.io/tea ' go.mod | awk '{print $2}')
-          latest=$(go list -m -versions code.gitea.io/tea | tr ' ' '\n' | grep -v '^v1\.3\.3$' | sort -V | tail -1)
+          module=code.gitea.io/tea
+          current=$(go list -m -f '{{.Version}}' "$module")
+          versions=$(go list -m -versions "$module" | cut -d' ' -f2-)
+          latest=
+
+          for version in $(printf '%s\n' "$versions" | tr ' ' '\n' | sort -Vr); do
+            if [ "$version" = "v1.3.3" ]; then
+              continue
+            fi
+
+            metadata=$(go mod download -json "$module@$version")
+            gomod=$(printf '%s\n' "$metadata" | sed -n 's/^[[:space:]]*"GoMod": "\(.*\)",$/\1/p')
+            declared=$(sed -n 's/^module[[:space:]]*//p' "$gomod")
+            if [ "$declared" = "$module" ]; then
+              latest=$version
+              break
+            fi
+          done
+
+          if [ -z "$latest" ]; then
+            echo "No compatible versions found for $module" >&2
+            exit 1
+          fi
+
           echo "current=$current" >> "$GITHUB_OUTPUT"
           echo "latest=$latest" >> "$GITHUB_OUTPUT"
           if [ "$current" != "$latest" ]; then
@@ -36,12 +58,12 @@ jobs:
       - name: Update tea dependency
         if: steps.check.outputs.update == 'true'
         run: |
-          go get code.gitea.io/tea@${{ steps.check.outputs.latest }}
+          go get "code.gitea.io/tea@${{ steps.check.outputs.latest }}"
           go mod tidy
 
       - name: Verify build
         if: steps.check.outputs.update == 'true'
-        run: CGO_ENABLED=0 go build -o extea .
+        run: CGO_ENABLED=0 go build -o "$RUNNER_TEMP/extea" .
 
       - name: Commit and push
         if: steps.check.outputs.update == 'true'
@@ -66,7 +88,7 @@ jobs:
 
       - name: Run goreleaser
         if: steps.check.outputs.update == 'true'
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           args: release --clean
         env:
